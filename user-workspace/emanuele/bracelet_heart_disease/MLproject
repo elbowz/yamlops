@@ -1,0 +1,12 @@
+name: bracelet
+
+conda_env: conda.yaml
+
+entry_points:
+    main:
+        parameters:
+            data_set: {type: string, default: './cleveland.csv'}
+            kernel: {type: string, default: 'rbf'}
+            degree: {type: int, default: 4}
+        command: "python train.py --data-set {data_set} --kernel {kernel} --degree {degree}"
+
