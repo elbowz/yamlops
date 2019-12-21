@@ -1,2 +1,4 @@
 /dfs/mlflow/*
 /.idea/
+/testing/
+__pycache__/
