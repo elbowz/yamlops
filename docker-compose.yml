@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.3'
 
 services:
 
@@ -11,15 +11,18 @@ services:
             - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf
             - ./docker/nginx/html:/usr/share/nginx/html
         environment:
-        #    - NGINX_HOST=yamlops.com
-        #    - NGINX_PORT=80
-            - USER1_USER=${USER1_USER}
+        #    NGINX_HOST: yamlops.com
+        #    NGINX_PORT: 80
+            USER_USER: ${USER_USER}
+            USER1_USER: ${USER1_USER}
+            USER2_USER: ${USER2_USER}
+            USER3_USER: ${USER3_USER}
         depends_on:
             - adminer
             - airflow
             - mlflow
             - jupyter
-        command: /bin/bash -c "envsubst '$$NGINX_HOST $$NGINX_PORT $$USER1_USER' < /etc/nginx/conf.d/nginx.conf > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
+        command: /bin/bash -c "envsubst '$$NGINX_HOST $$NGINX_PORT $$USER_USER $$USER1_USER $$USER2_USER $$USER3_USER' < /etc/nginx/conf.d/nginx.conf > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
         ports:
             - "${NGINX_PORT}:80"
 
@@ -39,8 +42,9 @@ services:
         #image: apacheignite/ignite:2.7.6
         build: './docker/disabled'
         container_name: ignite-container
+        restart: always
         environment:
-            - IGNITE_QUIET=false
+            IGNITE_QUIET: 'false'
         restart: always
 
     cassandra-web:
@@ -66,6 +70,8 @@ services:
         restart: always
         depends_on:
             - postgres
+        environment:
+            ADMINER_PLUGINS: 'frames'
         ports:
             - "${ADMINER_PORT}:8080"
 
@@ -102,6 +108,7 @@ services:
         build: './docker/mlflow'
         #build: './docker/disabled'
         container_name: mlflow-container
+        restart: always
         depends_on:
             - postgres
         volumes:
@@ -114,11 +121,13 @@ services:
         #image: wurstmeister/zookeeper
         build: './docker/disabled'
         container_name: zookeeper-container
+        restart: always
 
     kafka:
         #image: wurstmeister/kafka
         build: './docker/disabled'
         container_name: kafka-container
+        restart: always
         environment:
             KAFKA_ADVERTISED_HOST_NAME: kafka
             KAFKA_CREATE_TOPICS: 'TopicA:1:1'    # create a topic called 'TopicA"  with 1 partition and 1 replica
@@ -131,18 +140,62 @@ services:
         ports:
             - "${KAFKA_PORT}:9092"
 
+    spark-master:
+        image: bde2020/spark-master:2.4.4-hadoop2.7
+        container_name: spark-master-container
+        restart: always
+        environment:
+            - INIT_DAEMON_STEP=setup_spark
+        ports:
+            - "${SPARK_MASTER_PORT}:8080"
+
+    spark-worker-1:
+        image: bde2020/spark-worker:2.4.4-hadoop2.7
+        container_name: spark-worker-1-container
+        restart: always
+        depends_on:
+            - spark-master
+        environment:
+            - "SPARK_MASTER=spark://spark-master:7077"
+        ports:
+            - "${SPARK_WORKER1_PORT}:8080"
+
     jupyter:
         build: './docker/jupyter'
         #build: './docker/disabled'
         container_name: jupyter-container
-        #working_dir: /home/${USER1_USER}
+        restart: always
+        user: root
+        environment:
+            JUPYTER_ENABLE_LAB: 'yes'
+            NB_USER: ${USER_USER}
+            NB_GROUP: ${USER_GROUP}
+            NB_UID: ${USER_UID}
+            NB_GID: ${USER_GID}
+            CHOWN_HOME: 'yes'
+            CHOWN_HOME_OPTS: -R
+            GRANT_SUDO: 'yes'
+            MLFLOW_TRACKING_URI: 'http://mlflow:8080'
+        volumes:
+            - ./user-workspace/${USER_USER}:/home/${USER_USER}/work
+            - ./dfs:/home/${USER_USER}/dfs
+            - ./dfs/mlflow:/mlflow
+        command: "start-notebook.sh --NotebookApp.password='${SHA_PWD_SA1920}' --NotebookApp.base_url=/user/${USER_USER}"
+        ports:
+            - "${JUPYTER_PORT}:8888"
+
+    jupyter1:
+        build: './docker/jupyter'
+        #build: './docker/disabled'
+        container_name: jupyter1-container
+        restart: always
         user: root
         environment:
             JUPYTER_ENABLE_LAB: 'yes'
             NB_USER: ${USER1_USER}
-            NB_GROUP: ${USER1_GROUP}
-            NB_UID: ${USER1_UID}
-            NB_GID: ${USER1_GID}
+            NB_GROUP: ${USER_GROUP}
+            NB_UID: ${USER_UID}
+            NB_GID: ${USER_GID}
             CHOWN_HOME: 'yes'
             CHOWN_HOME_OPTS: -R
             GRANT_SUDO: 'yes'
@@ -155,21 +208,51 @@ services:
         ports:
             - "${JUPYTER1_PORT}:8888"
 
-    spark-master:
-        image: bde2020/spark-master:2.4.4-hadoop2.7
-        container_name: spark-master-container
+    jupyter2:
+        build: './docker/jupyter'
+        #build: './docker/disabled'
+        container_name: jupyter2-container
+        restart: always
+        user: root
         environment:
-            - INIT_DAEMON_STEP=setup_spark
+            JUPYTER_ENABLE_LAB: 'yes'
+            NB_USER: ${USER2_USER}
+            NB_GROUP: ${USER_GROUP}
+            NB_UID: ${USER_UID}
+            NB_GID: ${USER_GID}
+            CHOWN_HOME: 'yes'
+            CHOWN_HOME_OPTS: -R
+            GRANT_SUDO: 'yes'
+            MLFLOW_TRACKING_URI: 'http://mlflow:8080'
+        volumes:
+            - ./user-workspace/${USER2_USER}:/home/${USER2_USER}/work
+            - ./dfs:/home/${USER2_USER}/dfs
+            - ./dfs/mlflow:/mlflow
+        command: "start-notebook.sh --NotebookApp.password='${SHA_PWD_SA1920}' --NotebookApp.base_url=/user/${USER2_USER}"
         ports:
-          - "${SPARK_MASTER_PORT}:8080"
+            - "${JUPYTER2_PORT}:8888"
 
-    spark-worker-1:
-        image: bde2020/spark-worker:2.4.4-hadoop2.7
-        container_name: spark-worker-1-container
-        depends_on:
-            - spark-master
+    jupyter3:
+        build: './docker/jupyter'
+        #build: './docker/disabled'
+        container_name: jupyter3-container
+        restart: always
+        user: root
         environment:
-            - "SPARK_MASTER=spark://spark-master:7077"
+            JUPYTER_ENABLE_LAB: 'yes'
+            NB_USER: ${USER3_USER}
+            NB_GROUP: ${USER_GROUP}
+            NB_UID: ${USER_UID}
+            NB_GID: ${USER_GID}
+            CHOWN_HOME: 'yes'
+            CHOWN_HOME_OPTS: -R
+            GRANT_SUDO: 'yes'
+            MLFLOW_TRACKING_URI: 'http://mlflow:8080'
+        volumes:
+            - ./user-workspace/${USER3_USER}:/home/${USER3_USER}/work
+            - ./dfs:/home/${USER3_USER}/dfs
+            - ./dfs/mlflow:/mlflow
+        command: "start-notebook.sh --NotebookApp.password='${SHA_PWD_SA1920}' --NotebookApp.base_url=/user/${USER3_USER}"
         ports:
-            - "${SPARK_WORKER1_PORT}:8080"
+            - "${JUPYTER3_PORT}:8888"
        

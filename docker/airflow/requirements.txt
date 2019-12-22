@@ -1,7 +1,7 @@
 kafka-python==1.4.7
 Keras==2.3.1
 mlflow==1.4.0
-pyspark==2.4.4
+#pyspark==2.4.4
 cassandra-driver==3.20.2
 pyignite==0.3.4
 numpy==1.17.4

@@ -1,234 +1,106 @@
+import click
+
 import pandas as pd
+import numpy as np
 
-# import warnings filter
-from warnings import simplefilter
-# ignore all future warnings
-simplefilter(action='ignore', category = FutureWarning)
-# import warnings filter
-from warnings import simplefilter
-# ignore all future warnings
-simplefilter(action='ignore', category = FutureWarning)
+# tracking and versioning by mlflow
+import mlflow
+import mlflow.sklearn
 
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-df = pd.read_csv('cleveland.csv', header = None)
+def eval_metrics(actual, pred):
+    rmse = np.sqrt(mean_squared_error(actual, pred))
+    mae = mean_absolute_error(actual, pred)
+    r2 = r2_score(actual, pred)
+    return rmse, mae, r2
 
-df.columns = ['age', 'sex', 'cp', 'trestbps', 'chol',
-              'fbs', 'restecg', 'thalach', 'exang', 
-              'oldpeak', 'slope', 'ca', 'thal', 'target']
+@click.command(help="Do training on ./cleveland.csv, version and track params and metrics")
+@click.option("--data-set", default='./cleveland.csv')
+@click.option("--kernel", default='rbf')
+@click.option("--degree", default=3)
+def train(data_set, kernel, degree):
 
-### 1 = male, 0 = female
-df.isnull().sum()
+    # Data loading
 
-df['target'] = df.target.map({0: 0, 1: 1, 2: 1, 3: 1, 4: 1})
-df['sex'] = df.sex.map({0: 'female', 1: 'male'})
-df['thal'] = df.thal.fillna(df.thal.mean())
-df['ca'] = df.ca.fillna(df.ca.mean())
+    df = pd.read_csv(data_set, header = None)
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+    df.columns = ['age', 'sex', 'cp', 'trestbps', 'chol',
+                  'fbs', 'restecg', 'thalach', 'exang',
+                  'oldpeak', 'slope', 'ca', 'thal', 'target']
 
-# distribution of target vs age 
-sns.set_context("paper", font_scale = 2, rc = {"font.size": 20,"axes.titlesize": 25,"axes.labelsize": 20}) 
-sns.catplot(kind = 'count', data = df, x = 'age', hue = 'target', order = df['age'].sort_values().unique())
-plt.title('Variation of Age for each target class')
-plt.show()
+    ### 1 = male, 0 = female
+    df.isnull().sum()
 
- 
-# barplot of age vs sex with hue = target
-sns.catplot(kind = 'bar', data = df, y = 'age', x = 'sex', hue = 'target')
-plt.title('Distribution of age vs sex with the target class')
-plt.show()
+    df['target'] = df.target.map({0: 0, 1: 1, 2: 1, 3: 1, 4: 1})
+    df['sex'] = df.sex.map({0: 'female', 1: 'male'})
+    df['thal'] = df.thal.fillna(df.thal.mean())
+    df['ca'] = df.ca.fillna(df.ca.mean())
+    df['sex'] = df.sex.map({'female': 0, 'male': 1})
 
-df['sex'] = df.sex.map({'female': 0, 'male': 1})
+    # Data preprocessing
 
+    X = df.iloc[:, :-1].values
+    y = df.iloc[:, -1].values
 
-################################## data preprocessing
-X = df.iloc[:, :-1].values
-y = df.iloc[:, -1].values
+    from sklearn.model_selection import train_test_split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
 
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
+    from sklearn.preprocessing import StandardScaler as ss
+    sc = ss()
+    #X_train = sc.fit_transform(X_train)
+    #X_test = sc.transform(X_test)
 
-from sklearn.preprocessing import StandardScaler as ss
-sc = ss()
-X_train = sc.fit_transform(X_train)
-X_test = sc.transform(X_test)
+    np.savetxt(data_set + '_processed', X_train, delimiter=",")
 
-#########################################   SVM   #############################################################
-from sklearn.svm import SVC
-classifier = SVC(kernel = 'rbf')
-classifier.fit(X_train, y_train)
+    # Training
 
-# Predicting the Test set results
-y_pred = classifier.predict(X_test)
+    with mlflow.start_run():
 
-from sklearn.metrics import confusion_matrix
-cm_test = confusion_matrix(y_pred, y_test)
+        from sklearn.svm import SVC
+        classifier = SVC(kernel = kernel, degree = degree)
+        classifier.fit(X_train, y_train)
 
-y_pred_train = classifier.predict(X_train)
-cm_train = confusion_matrix(y_pred_train, y_train)
+        # Predicting the Test set results
+        y_pred = classifier.predict(X_test)
 
-print()
-print('Accuracy for training set for svm = {}'.format((cm_train[0][0] + cm_train[1][1])/len(y_train)))
-print('Accuracy for test set for svm = {}'.format((cm_test[0][0] + cm_test[1][1])/len(y_test)))
+        from sklearn.metrics import confusion_matrix
+        cm_test = confusion_matrix(y_pred, y_test)
 
+        y_pred_train = classifier.predict(X_train)
+        cm_train = confusion_matrix(y_pred_train, y_train)
 
-#########################################   Naive Bayes  #############################################################
-X = df.iloc[:, :-1].values
-y = df.iloc[:, -1].values
+        accuracy_test_set = (cm_test[0][0] + cm_test[1][1])/len(y_test)
+        accuracy_training_set = (cm_train[0][0] + cm_train[1][1])/len(y_train)
+        (rmse, mae, r2) = eval_metrics(y_test, y_pred)
 
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
+        # Log parameter, metrics, and model to MLflow
+        mlflow.log_param("kernel", kernel)
+        mlflow.log_param("degree", degree)
 
-from sklearn.naive_bayes import GaussianNB
-classifier = GaussianNB()
-classifier.fit(X_train, y_train)
+        mlflow.log_metric("Accuracy", accuracy_test_set)
+        mlflow.log_metric("Accuracy TrainingSet", accuracy_training_set)
+        mlflow.log_metric("mae", mae)
+        mlflow.log_metric("rmse", rmse)
+        mlflow.log_metric("r2", r2)
+        mlflow.log_metric("mae", mae)
 
+        # Add tag to MLflow log
+        mlflow.set_tag('model', 'SVM')
+        mlflow.set_tag('stage', 'prod')
 
-# Predicting the Test set results
-y_pred = classifier.predict(X_test)
+        # Add DataSet to artifacts
+        mlflow.log_artifact('./cleveland.csv')
 
-from sklearn.metrics import confusion_matrix
-cm_test = confusion_matrix(y_pred, y_test)
+        mlflow.sklearn.log_model(classifier, "model")
 
-y_pred_train = classifier.predict(X_train)
-cm_train = confusion_matrix(y_pred_train, y_train)
+        # Print out metrics
+        print("SVM model (kernel=%s, degree=%s):" % (kernel, degree))
+        print('  Accuracy for TestSet %s' % accuracy_test_set)
+        print('  Accuracy for TrainingSet %s' % accuracy_training_set)
+        print("  RMSE: %s" % rmse)
+        print("  MAE: %s" % mae)
+        print("  R2: %s" % r2)
 
-print()
-print('Accuracy for training set for Naive Bayes = {}'.format((cm_train[0][0] + cm_train[1][1])/len(y_train)))
-print('Accuracy for test set for Naive Bayes = {}'.format((cm_test[0][0] + cm_test[1][1])/len(y_test)))
-
-
-#########################################   Logistic Regression  #############################################################
-X = df.iloc[:, :-1].values
-y = df.iloc[:, -1].values
-
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
-
-from sklearn.linear_model import LogisticRegression
-classifier = LogisticRegression()
-classifier.fit(X_train, y_train)
-
-# Predicting the Test set results
-y_pred = classifier.predict(X_test)
-
-from sklearn.metrics import confusion_matrix
-cm_test = confusion_matrix(y_pred, y_test)
-
-y_pred_train = classifier.predict(X_train)
-cm_train = confusion_matrix(y_pred_train, y_train)
-
-print()
-print('Accuracy for training set for Logistic Regression = {}'.format((cm_train[0][0] + cm_train[1][1])/len(y_train)))
-print('Accuracy for test set for Logistic Regression = {}'.format((cm_test[0][0] + cm_test[1][1])/len(y_test)))
-
-#########################################   Decision Tree  #############################################################
-X = df.iloc[:, :-1].values
-y = df.iloc[:, -1].values
-
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
-
-from sklearn.tree import DecisionTreeClassifier
-classifier = DecisionTreeClassifier()
-classifier.fit(X_train, y_train)
-
-# Predicting the Test set results
-y_pred = classifier.predict(X_test)
-
-from sklearn.metrics import confusion_matrix
-cm_test = confusion_matrix(y_pred, y_test)
-
-y_pred_train = classifier.predict(X_train)
-cm_train = confusion_matrix(y_pred_train, y_train)
-
-print()
-print('Accuracy for training set for Decision Tree = {}'.format((cm_train[0][0] + cm_train[1][1])/len(y_train)))
-print('Accuracy for test set for Decision Tree = {}'.format((cm_test[0][0] + cm_test[1][1])/len(y_test)))
-
-
-#########################################  Random Forest  #############################################################
-X = df.iloc[:, :-1].values
-y = df.iloc[:, -1].values
-
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
-
-from sklearn.ensemble import RandomForestClassifier
-classifier = RandomForestClassifier(n_estimators = 10)
-classifier.fit(X_train, y_train)
-
-# Predicting the Test set results
-y_pred = classifier.predict(X_test)
-
-from sklearn.metrics import confusion_matrix
-cm_test = confusion_matrix(y_pred, y_test)
-
-y_pred_train = classifier.predict(X_train)
-cm_train = confusion_matrix(y_pred_train, y_train)
-
-print()
-print('Accuracy for training set for Random Forest = {}'.format((cm_train[0][0] + cm_train[1][1])/len(y_train)))
-print('Accuracy for test set for Random Forest = {}'.format((cm_test[0][0] + cm_test[1][1])/len(y_test)))
-
-###############################################################################
-# applying lightGBM
-import lightgbm as lgb
-
-d_train = lgb.Dataset(X_train, label = y_train)
-params = {}
-
-clf = lgb.train(params, d_train, 100)
-#Prediction
-y_pred = clf.predict(X_test)
-#convert into binary values
-for i in range(0, len(y_pred)):
-    if y_pred[i]>= 0.5:       # setting threshold to .5
-       y_pred[i]=1
-    else:  
-       y_pred[i]=0
-       
-from sklearn.metrics import confusion_matrix
-cm_test = confusion_matrix(y_pred, y_test)
-
-y_pred_train = clf.predict(X_train)
-
-for i in range(0, len(y_pred_train)):
-    if y_pred_train[i]>= 0.5:       # setting threshold to .5
-       y_pred_train[i]=1
-    else:  
-       y_pred_train[i]=0
-       
-cm_train = confusion_matrix(y_pred_train, y_train)
-print()
-print('Accuracy for training set for LightGBM = {}'.format((cm_train[0][0] + cm_train[1][1])/len(y_train)))
-print('Accuracy for test set for LightGBM = {}'.format((cm_test[0][0] + cm_test[1][1])/len(y_test)))
-
-
-###############################################################################
-# applying XGBoost
-
-#from sklearn.model_selection import train_test_split
-#X_train, X_test, y_train, y_test = train_test_split(X, target, test_size = 0.20, random_state = 0)
-
-from xgboost import XGBClassifier
-xg = XGBClassifier()
-xg.fit(X_train, y_train)
-y_pred = xg.predict(X_test)
-
-from sklearn.metrics import confusion_matrix
-cm_test = confusion_matrix(y_pred, y_test)
-
-y_pred_train = xg.predict(X_train)
-
-for i in range(0, len(y_pred_train)):
-    if y_pred_train[i]>= 0.5:       # setting threshold to .5
-       y_pred_train[i]=1
-    else:  
-       y_pred_train[i]=0
-       
-cm_train = confusion_matrix(y_pred_train, y_train)
-print()
-print('Accuracy for training set for XGBoost = {}'.format((cm_train[0][0] + cm_train[1][1])/len(y_train)))
-print('Accuracy for test set for XGBoost = {}'.format((cm_test[0][0] + cm_test[1][1])/len(y_test)))
+if __name__ == "__main__":
+    train()

@@ -21,6 +21,16 @@
   <!-- Custom CSS -->
   <link href="css/stylish-portfolio.min.css" rel="stylesheet">
 
+  <style>
+    .sidebar-nav li.sidebar-nav-item a {
+      padding: 12px;
+    }
+
+    #main-iframe {
+      height: 100% !important;
+    }
+  </style>
+
 </head>
 
 <body id="page-top" style="overflow: hidden;">
@@ -31,35 +41,47 @@
   </a>
   <nav id="sidebar-wrapper">
     <ul class="sidebar-nav">
-      <li class="sidebar-nav-item">
-        <a href="http://localhost/airflow" target="main-iframe">Start Bootstrap</a>
-      </li>
       <li class="sidebar-brand">
-        <a class="js-scroll-trigger" href="#page-top">Start Bootstrap</a>
+        <a href="http://localhost" target="main-iframe"><i class="fas fa-home"></i> Home</a>
+      </li>
+      <li class="sidebar-nav-item text-secondary m-2"><i class="fas fa-user-friends"></i> Users</li>
+      <li class="sidebar-nav-item">
+        <a href="http://localhost/user/emanuele" target="main-iframe">Emanuele</a>
       </li>
       <li class="sidebar-nav-item">
-        <a href="http://localhost/mlflow" target="main-iframe">Home</a>
+        <a href="http://localhost/user/henry" target="main-iframe">Henry</a>
       </li>
       <li class="sidebar-nav-item">
-        <a href="http://localhost/user/emanuele" target="main-iframe">About</a>
+        <a href="http://localhost/user/davide" target="main-iframe">Davide</a>
       </li>
       <li class="sidebar-nav-item">
-        <a href="http://localhost/spark" target="main-iframe">Services</a>
+        <a href="http://localhost/user/karthik" target="main-iframe">Karthik</a>
+      </li>
+      <li class="sidebar-nav-item text-secondary m-2"><i class="fas fa-tools"></i> Tools</li>
+      <li class="sidebar-nav-item">
+        <a href="http://localhost/airflow" target="main-iframe">Airflow</a>
       </li>
       <li class="sidebar-nav-item">
-        <a class="js-scroll-trigger" href="#portfolio">Portfolio</a>
+        <a href="http://localhost/mlflow" target="main-iframe">MLFlow</a>
       </li>
       <li class="sidebar-nav-item">
-        <a class="js-scroll-trigger" href="#contact">Contact</a>
+        <a href="http://localhost/mlflow/#/models" target="main-iframe">Model Repository</a>
+      </li>
+      <li class="sidebar-nav-item">
+        <a href="http://localhost/adminer" target="main-iframe">PostgreSQL</a>
+      </li>
+      <li class="sidebar-nav-item">
+        <a href="http://localhost/spark-master" target="main-iframe">Spark Master</a>
+      </li>
+      <li class="sidebar-nav-item">
+        <a class="menu-close text-right" href="#">close <i class="far fa-times-circle"></i></a>
       </li>
     </ul>
   </nav>
 
   <div class="embed-responsive embed-responsive-16by9" style="position: static;">
-    <iframe name="main-iframe" class="embed-responsive-item" src="welcome.html" allowfullscreen></iframe>
+    <iframe id="main-iframe" name="main-iframe" class="embed-responsive-item" src="welcome.html" allowfullscreen style="height: 100% !important"></iframe>
   </div>
-
-<!--    <iframe name="main-iframe" src="welcome.html" frameborder="0" style="overflow:hidden;overflow-x:hidden;overflow-y:hidden;height:100%;width:100%;position:absolute;top:0px;left:0px;right:0px;bottom:0px" height="100%" width="100%"></iframe>
 
   <!-- Bootstrap core JavaScript -->
   <script src="vendor/jquery/jquery.min.js"></script>
