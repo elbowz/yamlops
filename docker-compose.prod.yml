@@ -1,0 +1,54 @@
+version: '3.3'
+
+services:
+
+    nginx:
+        restart: always
+
+    postgres:
+        restart: always
+
+    cassandra:
+        restart: always
+
+    ignite:
+        restart: always
+
+    cassandra-web:
+        restart: always
+
+    adminer:
+        restart: always
+
+    airflow:
+        restart: always
+
+    mlflow:
+        restart: always
+
+    zookeeper:
+        restart: always
+
+    kafka:
+        restart: always
+
+    kafdrop:
+        restart: always
+
+    spark-master:
+        restart: always
+
+    spark-worker-1:
+        restart: always
+
+    jupyter:
+        restart: always
+
+    jupyter1:
+        restart: always
+
+    jupyter2:
+        restart: always
+
+    jupyter3:
+        restart: always
