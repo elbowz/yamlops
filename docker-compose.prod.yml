@@ -4,6 +4,7 @@ services:
 
     nginx:
         restart: always
+        command: /bin/bash -c "sleep 120s && envsubst '$$NGINX_HOST $$NGINX_PORT $$USER_USER $$USER1_USER $$USER2_USER $$USER3_USER' < /etc/nginx/conf.d/nginx.conf > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
 
     postgres:
         restart: always
@@ -11,10 +12,12 @@ services:
     cassandra:
         restart: always
 
-    ignite:
-        restart: always
+    cassandra-client:
 
     cassandra-web:
+        restart: always
+
+    ignite:
         restart: always
 
     adminer:
@@ -22,6 +25,8 @@ services:
 
     airflow:
         restart: always
+        environment:
+            LOAD_EX: n
 
     mlflow:
         restart: always
@@ -34,6 +39,10 @@ services:
 
     kafdrop:
         restart: always
+
+    rest-prediction:
+        restart: always
+        command: /bin/bash -c "sleep 40s && python ./rest-prediction.py --run-id 44463a7b9f044b5ea6aaddb32bf0f4df --kafka-topic bracelet-feed"
 
     spark-master:
         restart: always

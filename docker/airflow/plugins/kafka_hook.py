@@ -1,4 +1,4 @@
-from airflow.hooks import BaseHook
+from airflow.hooks.base_hook import BaseHook
 from kafka import KafkaConsumer
 
 class KafkaConsumerHook(BaseHook):
