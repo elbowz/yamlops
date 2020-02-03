@@ -143,15 +143,18 @@ services:
             - zookeeper
         environment:
             KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-            KAFKA_ADVERTISED_HOST_NAME: kafka
-            KAFKA_CREATE_TOPICS: 'bracelet-feed:1:1'    # create a topic called 'bracelet-feed"  with 1 partition and 1 replica
+            #KAFKA_ADVERTISED_HOST_NAME: kafka
+            #KAFKA_CREATE_TOPICS: 'bracelet-feed:1:1'    # create a topic called 'bracelet-feed"  with 1 partition and 1 replica
             #KAFKA_CREATE_TOPICS: 'Topic1:1:3,Topic2:1:1:compact'
-            KAFKA_LISTENERS: 'PLAINTEXT://:9092'
-            KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+            KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9093
+            KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9093
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+            KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
         ports:
-            - "${KAFKA_PORT}:9092"
+            - "${KAFKA_PORT_INTERNAL}:9092"
+            - "${KAFKA_PORT_EXTERNAL}:9093"
 
     kafdrop:
         image: obsidiandynamics/kafdrop
@@ -179,7 +182,7 @@ services:
             MLFLOW_TRACKING_URI: 'http://mlflow:8080'
         volumes:
             - ./dfs/mlflow:/mlflow
-        command: /bin/bash -c "sleep 30s && python ./rest-prediction.py --run-id a5cfbe95422d44bf81a3cf8c871f0451 --kafka-topic bracelet-feed"
+        command: /bin/bash -c "sleep 30s && python ./rest-prediction.py --run-id d54541cf3c8a4a29a8a47bf01c627335 --kafka-topic bracelet-feed"
         ports:
             - "${REST_PREDICTION_PORT}:5000"
 
