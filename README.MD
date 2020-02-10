@@ -6,6 +6,5 @@
 ### Resources and Documentation
 
 * [PDF documentation](YAST-SA20.pdf)
-* [Online prototype](http://yamlops.uk.to/) (available only for January)
 * [Usage screencast overview](https://youtu.be/8jNK6N-cPJA)
 * [Bracelet scenario screencast](https://youtu.be/rGJxirePeF0)
