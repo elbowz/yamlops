@@ -36,6 +36,9 @@ services:
 
     kafka:
         restart: always
+        environment:
+            KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://yamlops.uk.to:9093
+
 
     kafdrop:
         restart: always
